@@ -1,0 +1,10 @@
+model:
+  name: LightMNIST
+
+training:
+  batch_size: 128
+  learning_rate: 0.01
+  epochs: 1
+
+data:
+  data_dir: data
