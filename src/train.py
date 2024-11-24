@@ -58,11 +58,12 @@ def train_epoch(model, train_loader, optimizer, scheduler, device):
     accuracy_pbar = tqdm(train_loader, desc='Final Accuracy', 
                         total=len(train_loader),
                         bar_format='{l_bar}{bar:30}{r_bar}')
-    
+    train_loss = 0
     with torch.no_grad():
         for data, target in accuracy_pbar:
             data, target = data.to(device), target.to(device)
             output = model(data)
+            train_loss += F.nll_loss(output, target, reduction='sum').item()
             pred = output.argmax(dim=1, keepdim=True)
             current_correct = pred.eq(target.view_as(pred)).sum().item()
             correct += current_correct
@@ -70,12 +71,13 @@ def train_epoch(model, train_loader, optimizer, scheduler, device):
             
             # Update progress bar with current accuracy
             current_acc = 100 * correct / total
-            accuracy_pbar.set_description(f'Final Accuracy: {current_acc:.2f}%')
+            current_loss = train_loss / total
+            accuracy_pbar.set_description(f'Training Accuracy: {current_acc:.2f}% | Loss: {current_loss:.4f}')
     
-    final_accuracy = 100 * correct / total
-    print(f"\nFinal Training Accuracy: {final_accuracy:.2f}%")
+    # Use the last calculated current_acc instead of recalculating
+    print(f'\nTrain set: Average loss: {current_loss:.4f}, Accuracy: {correct}/{len(train_loader.dataset)} ({current_acc:.2f}%)\n')
     
-    return final_accuracy
+    return current_acc
 
 def test(model, test_loader, device):
     model.eval()
@@ -106,11 +108,8 @@ def test(model, test_loader, device):
                 f'Test Accuracy: {current_acc:.2f}% | Loss: {current_loss:.4f}'
             )
     
-    test_loss /= len(test_loader.dataset)
-    test_accuracy = 100. * correct / len(test_loader.dataset)
-    
-    print(f'\nTest set: Average loss: {test_loss:.4f}, Accuracy: {correct}/{len(test_loader.dataset)} ({test_accuracy:.2f}%)\n')
-    return test_accuracy
+    print(f'\nTest set: Average loss: {current_loss:.4f}, Accuracy: {correct}/{len(test_loader.dataset)} ({current_acc:.2f}%)\n')
+    return current_acc
 
 def main():
     # Set device
