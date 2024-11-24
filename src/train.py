@@ -5,7 +5,7 @@ from model import LightMNIST
 from dataset import get_mnist_loaders
 from utils import count_parameters
 
-def train_epoch(model, train_loader, optimizer, device):
+def train_epoch(model, train_loader, optimizer, scheduler, device):
     model.train()
     correct = 0
     processed = 0
@@ -30,6 +30,7 @@ def train_epoch(model, train_loader, optimizer, device):
         # Backward pass
         loss.backward()
         optimizer.step()
+        scheduler.step()  # Update learning rate
         
         # Calculate accuracy
         pred = output.argmax(dim=1, keepdim=True)
@@ -86,11 +87,20 @@ def main():
     # Get data loaders
     train_loader, test_loader = get_mnist_loaders(batch_size=128)
     
-    # Optimizer
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    # Optimizer and Scheduler
+    optimizer = optim.Adam(model.parameters(), lr=0.015)
+    scheduler = optim.lr_scheduler.OneCycleLR(
+        optimizer,
+        max_lr=0.015,
+        epochs=1,
+        steps_per_epoch=len(train_loader),
+        div_factor=10,
+        pct_start=0.3,
+        anneal_strategy='cos'
+    )
     
     # Train for one epoch
-    train_accuracy = train_epoch(model, train_loader, optimizer, device)
+    train_accuracy = train_epoch(model, train_loader, optimizer, scheduler, device)
     
     # Test the model
     test_accuracy = test(model, test_loader, device)
