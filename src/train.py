@@ -68,10 +68,13 @@ def train(model, train_loader, test_loader, optimizer, scheduler, device, num_ep
         'train_acc': [],
         'test_acc': [],
         'train_loss': [],
-        'test_loss': []
+        'test_loss': [],
+        'learning_rates': []
     }
     
     best_acc = 0.0
+    total_steps = num_epochs * len(train_loader)
+    current_step = 0
     
     for epoch in range(1, num_epochs + 1):
         print(f"\nEpoch {epoch}/{num_epochs}")
@@ -83,11 +86,15 @@ def train(model, train_loader, test_loader, optimizer, scheduler, device, num_ep
         
         print("\nTraining Progress:")
         print("-" * 100)
-        print(f"{'Batch':^10} | {'Loss':^10} | {'Avg Loss':^10} | {'Batch Acc':^10} | {'Progress':^20}")
+        print(f"{'Batch':^10} | {'Loss':^10} | {'Avg Loss':^10} | {'Batch Acc':^10} | {'LR':^10} | {'Progress':^20}")
         print("-" * 100)
         
         # Training loop
         for batch_idx, (data, target) in enumerate(train_loader, 1):
+            current_step += 1
+            current_lr = optimizer.param_groups[0]['lr']
+            history['learning_rates'].append(current_lr)
+            
             data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             
@@ -111,6 +118,7 @@ def train(model, train_loader, test_loader, optimizer, scheduler, device, num_ep
                     f"{loss.item():^10.4f} | "
                     f"{running_loss/batch_idx:^10.4f} | "
                     f"{batch_acc:^10.2f}% | "
+                    f"{current_lr:^10.6f} | "
                     f"{batch_idx:^6d}/{len(train_loader):^6d}"
                 )
         
@@ -160,16 +168,17 @@ def main():
     train_loader, test_loader = get_mnist_loaders(batch_size=128)
     
     # Optimizer and Scheduler setup for multiple epochs
-    num_epochs = 5
+    num_epochs = 10
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     
     # Scheduler for the entire training duration
     scheduler = optim.lr_scheduler.OneCycleLR(
         optimizer,
-        max_lr=0.01,
+        max_lr=0.015,
         epochs=num_epochs,
         steps_per_epoch=len(train_loader),
         div_factor=10,
+        final_div_factor=10, # final LR = initial_lr / final_div_factor
         pct_start=0.3,
         anneal_strategy='cos'
     )
@@ -179,13 +188,16 @@ def main():
     
     # Plot training history
     plot_training_history(history)
+    
+    # Plot detailed learning rate changes
+    plot_lr_changes(history, num_epochs)
 
 def plot_training_history(history):
-    """Plot training and testing metrics"""
-    plt.figure(figsize=(12, 4))
+    """Plot training metrics including learning rate"""
+    plt.figure(figsize=(15, 5))
     
     # Plot accuracy
-    plt.subplot(1, 2, 1)
+    plt.subplot(1, 3, 1)
     plt.plot(history['train_acc'], label='Train Accuracy')
     plt.plot(history['test_acc'], label='Test Accuracy')
     plt.title('Model Accuracy')
@@ -194,7 +206,7 @@ def plot_training_history(history):
     plt.legend()
     
     # Plot loss
-    plt.subplot(1, 2, 2)
+    plt.subplot(1, 3, 2)
     plt.plot(history['train_loss'], label='Train Loss')
     plt.plot(history['test_loss'], label='Test Loss')
     plt.title('Model Loss')
@@ -202,7 +214,55 @@ def plot_training_history(history):
     plt.ylabel('Loss')
     plt.legend()
     
+    # Plot learning rate
+    plt.subplot(1, 3, 3)
+    plt.plot(history['learning_rates'], label='Learning Rate')
+    plt.title('Learning Rate Schedule')
+    plt.xlabel('Training Step')
+    plt.ylabel('Learning Rate')
+    
+    # Add vertical lines for epoch boundaries
+    steps_per_epoch = len(history['learning_rates']) // len(history['train_acc'])
+    for epoch in range(1, len(history['train_acc'])):
+        plt.axvline(x=epoch * steps_per_epoch, color='r', linestyle='--', alpha=0.3)
+    
+    plt.legend()
     plt.tight_layout()
+    plt.show()
+
+def plot_lr_changes(history, num_epochs):
+    """Create a detailed view of learning rate changes"""
+    plt.figure(figsize=(12, 6))
+    
+    steps = len(history['learning_rates'])
+    steps_per_epoch = steps // num_epochs
+    
+    plt.plot(history['learning_rates'], label='Learning Rate')
+    
+    # Add epoch boundaries
+    for epoch in range(1, num_epochs):
+        plt.axvline(x=epoch * steps_per_epoch, color='r', linestyle='--', alpha=0.3)
+        plt.text(epoch * steps_per_epoch, max(history['learning_rates'])*1.1, 
+                f'Epoch {epoch+1}', ha='center')
+    
+    # Add annotations for phases
+    warmup_steps = int(steps * 0.3)
+    plt.annotate('Warmup Phase', 
+                xy=(warmup_steps//2, history['learning_rates'][warmup_steps//2]),
+                xytext=(warmup_steps//2, max(history['learning_rates'])*1.2),
+                ha='center',
+                arrowprops=dict(facecolor='black', shrink=0.05))
+    
+    plt.annotate('Annealing Phase', 
+                xy=(warmup_steps + (steps-warmup_steps)//2, history['learning_rates'][warmup_steps]),
+                xytext=(warmup_steps + (steps-warmup_steps)//2, max(history['learning_rates'])*1.2),
+                ha='center',
+                arrowprops=dict(facecolor='black', shrink=0.05))
+    
+    plt.title('Learning Rate Changes During Training')
+    plt.xlabel('Training Step')
+    plt.ylabel('Learning Rate')
+    plt.grid(True, alpha=0.3)
     plt.show()
 
 if __name__ == "__main__":
