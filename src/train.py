@@ -5,6 +5,7 @@ from model import LightMNIST
 from dataset import get_mnist_loaders
 from utils import count_parameters
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 def calculate_accuracy(model, data_loader, device, desc="Accuracy"):
     """
@@ -47,66 +48,104 @@ def calculate_accuracy(model, data_loader, device, desc="Accuracy"):
     
     return current_acc, current_loss, correct, total
 
-def train_epoch(model, train_loader, optimizer, scheduler, device):
-    model.train()
-    running_loss = 0.0
+def train(model, train_loader, test_loader, optimizer, scheduler, device, num_epochs=5):
+    """
+    Train the model for multiple epochs
     
-    print("\nTraining Progress:")
-    print("-" * 100)
-    print(f"{'Batch':^10} | {'Loss':^10} | {'Avg Loss':^10} | {'Batch Acc':^10} | {'Progress':^20}")
-    print("-" * 100)
+    Args:
+        model: Neural network model
+        train_loader: Training data loader
+        test_loader: Test data loader
+        optimizer: Optimizer instance
+        scheduler: Learning rate scheduler
+        device: Device to train on
+        num_epochs: Number of epochs to train for
     
-    # For batch-wise monitoring
-    for batch_idx, (data, target) in enumerate(train_loader, 1):
-        data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
+    Returns:
+        dict: Training history containing accuracies and losses
+    """
+    history = {
+        'train_acc': [],
+        'test_acc': [],
+        'train_loss': [],
+        'test_loss': []
+    }
+    
+    best_acc = 0.0
+    
+    for epoch in range(1, num_epochs + 1):
+        print(f"\nEpoch {epoch}/{num_epochs}")
+        print("=" * 50)
         
-        # Forward pass
-        output = model(data)
+        # Training phase
+        model.train()
+        running_loss = 0.0
         
-        # Calculate loss
-        loss = F.nll_loss(output, target)
-        running_loss += loss.item()
+        print("\nTraining Progress:")
+        print("-" * 100)
+        print(f"{'Batch':^10} | {'Loss':^10} | {'Avg Loss':^10} | {'Batch Acc':^10} | {'Progress':^20}")
+        print("-" * 100)
         
-        # Backward pass
-        loss.backward()
-        optimizer.step()
-        scheduler.step()  # Update learning rate
+        # Training loop
+        for batch_idx, (data, target) in enumerate(train_loader, 1):
+            data, target = data.to(device), target.to(device)
+            optimizer.zero_grad()
+            
+            output = model(data)
+            loss = F.nll_loss(output, target)
+            running_loss += loss.item()
+            
+            loss.backward()
+            optimizer.step()
+            
+            if scheduler is not None:
+                scheduler.step()
+            
+            # Calculate batch accuracy
+            pred = output.argmax(dim=1, keepdim=True)
+            batch_acc = 100 * pred.eq(target.view_as(pred)).sum().item() / len(data)
+            
+            if batch_idx <= 5 or batch_idx % 50 == 0 or batch_idx == len(train_loader):
+                print(
+                    f"{batch_idx:^10d} | "
+                    f"{loss.item():^10.4f} | "
+                    f"{running_loss/batch_idx:^10.4f} | "
+                    f"{batch_acc:^10.2f}% | "
+                    f"{batch_idx:^6d}/{len(train_loader):^6d}"
+                )
         
-        # Calculate batch accuracy
-        pred = output.argmax(dim=1, keepdim=True)
-        batch_acc = 100 * pred.eq(target.view_as(pred)).sum().item() / len(data)
+        print("-" * 100)
         
-        # Print first 5 batches and then every 50th batch
-        if batch_idx <= 5 or batch_idx % 50 == 0 or batch_idx == len(train_loader):
-            print(
-                f"{batch_idx:^10d} | "
-                f"{loss.item():^10.4f} | "
-                f"{running_loss/batch_idx:^10.4f} | "
-                f"{batch_acc:^10.2f}% | "
-                f"{batch_idx:^6d}/{len(train_loader):^6d}"
-            )
+        # Calculate final training accuracy for this epoch
+        print("\nCalculating final training accuracy...")
+        train_acc, train_loss, train_correct, train_total = calculate_accuracy(
+            model, train_loader, device, desc=f"Epoch {epoch} Training"
+        )
+        
+        # Calculate test accuracy
+        print("\nCalculating test accuracy...")
+        test_acc, test_loss, test_correct, test_total = calculate_accuracy(
+            model, test_loader, device, desc=f"Epoch {epoch} Testing"
+        )
+        
+        # Save metrics
+        history['train_acc'].append(train_acc)
+        history['test_acc'].append(test_acc)
+        history['train_loss'].append(train_loss)
+        history['test_loss'].append(test_loss)
+        
+        # Print epoch summary
+        print(f"\nEpoch {epoch} Summary:")
+        print(f"Training - Accuracy: {train_acc:.2f}%, Loss: {train_loss:.4f}")
+        print(f"Testing  - Accuracy: {test_acc:.2f}%, Loss: {test_loss:.4f}")
+        
+        # Save best model
+        if test_acc > best_acc:
+            best_acc = test_acc
+            print(f"New best accuracy! Saving model...")
+            torch.save(model.state_dict(), 'best_model.pth')
     
-    print("-" * 100)
-    
-    # Calculate final training accuracy
-    print("\nCalculating final training accuracy...")
-    final_acc, final_loss, correct, total = calculate_accuracy(
-        model, train_loader, device, desc="Final Training"
-    )
-    
-    # Use the last calculated current_acc instead of recalculating
-    print(f'\nTrain set: Average loss: {final_loss:.4f}, Accuracy: {correct}/{total} ({final_acc:.2f}%)\n')
-    return final_acc
-
-def test(model, test_loader, device):
-    print("\nCalculating test accuracy...")
-    test_acc, test_loss, correct, total = calculate_accuracy(
-        model, test_loader, device, desc="Test"
-    )
-    
-    print(f'\nTest set: Average loss: {test_loss:.4f}, Accuracy: {correct}/{total} ({test_acc:.2f}%)\n')
-    return test_acc
+    return history
 
 def main():
     # Set device
@@ -120,26 +159,51 @@ def main():
     # Get data loaders
     train_loader, test_loader = get_mnist_loaders(batch_size=128)
     
-    # Optimizer and Scheduler
-    optimizer = optim.Adam(model.parameters(), lr=0.015)
+    # Optimizer and Scheduler setup for multiple epochs
+    num_epochs = 5
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    
+    # Scheduler for the entire training duration
     scheduler = optim.lr_scheduler.OneCycleLR(
         optimizer,
-        max_lr=0.015,
-        epochs=1,
+        max_lr=0.01,
+        epochs=num_epochs,
         steps_per_epoch=len(train_loader),
         div_factor=10,
         pct_start=0.3,
         anneal_strategy='cos'
     )
     
-    # Train for one epoch
-    train_accuracy = train_epoch(model, train_loader, optimizer, scheduler, device)
+    # Train the model
+    history = train(model, train_loader, test_loader, optimizer, scheduler, device, num_epochs=num_epochs)
     
-    # Test the model
-    test_accuracy = test(model, test_loader, device)
+    # Plot training history
+    plot_training_history(history)
+
+def plot_training_history(history):
+    """Plot training and testing metrics"""
+    plt.figure(figsize=(12, 4))
     
-    print(f"Training Accuracy: {train_accuracy:.2f}%")
-    print(f"Test Accuracy: {test_accuracy:.2f}%")
+    # Plot accuracy
+    plt.subplot(1, 2, 1)
+    plt.plot(history['train_acc'], label='Train Accuracy')
+    plt.plot(history['test_acc'], label='Test Accuracy')
+    plt.title('Model Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy (%)')
+    plt.legend()
+    
+    # Plot loss
+    plt.subplot(1, 2, 2)
+    plt.plot(history['train_loss'], label='Train Loss')
+    plt.plot(history['test_loss'], label='Test Loss')
+    plt.title('Model Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     main() 

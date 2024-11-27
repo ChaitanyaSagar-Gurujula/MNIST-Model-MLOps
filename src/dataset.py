@@ -19,7 +19,7 @@ def get_mnist_loaders(batch_size=128):
     
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
+        transforms.Normalize((0.1307,), (0.3081,)) # Lets check later whether to keep this normalization or not
     ])
     
     train_dataset = datasets.MNIST(data_path, 
