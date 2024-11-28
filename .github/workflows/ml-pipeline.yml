@@ -1,5 +1,11 @@
 name: MNIST CI/CD Pipeline
 
+# Add permissions at the job level
+permissions:
+  contents: write      # This allows creating releases
+  pull-requests: read  # If you need to read PR information
+  issues: write       # If you need to comment on issues
+
 on:
   push:
     branches: [ main ]
@@ -59,7 +65,7 @@ jobs:
         
     # 6. Create release
     - name: Create Release
-      if: success()
+      if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -76,7 +82,7 @@ jobs:
 
     # 7. Upload trained model as release asset
     - name: Upload Release Asset
-      if: success()
+      if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
