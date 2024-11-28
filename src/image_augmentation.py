@@ -3,7 +3,7 @@ import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import numpy as np
-from dataset import get_data_path
+from src.dataset import get_data_path
 from torchvision import datasets
 
 def show_images(images, titles, rows=2, cols=5):

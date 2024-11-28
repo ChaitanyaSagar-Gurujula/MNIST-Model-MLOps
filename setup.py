@@ -1,0 +1,16 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="mnist-model-mlops",
+    version="0.1",
+    package_dir={'': 'src'},
+    python_requires=">=3.7",
+    install_requires=[
+        "torch>=2.0.0",
+        "torchvision>=0.15.0",
+        "matplotlib>=3.5.0",
+        "numpy>=1.21.0",
+        "pytest>=7.0.0",
+        "pytest-cov>=4.0.0",
+    ],
+) 

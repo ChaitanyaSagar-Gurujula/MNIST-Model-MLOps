@@ -1,9 +1,9 @@
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-from model import LightMNIST
-from dataset import get_mnist_loaders
-from utils import count_parameters
+from src.model import LightMNIST
+from src.dataset import get_mnist_loaders
+from src.utils import count_parameters
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
