@@ -24,33 +24,40 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    
+    # 1. Install dependencies
     - name: Install dependencies and package
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -e .
-        
+
+    # 2. Train model
+    - name: Train and save model
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+      run: |
+        python src/train.py
+
+    # 3. Upload trained model as artifact
+    - name: Upload model artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: trained-model
+        path: best_model.pth
+
+    # 4. Run all tests (including model performance tests)
     - name: Run tests
       run: |
         pytest tests/ -v --junitxml=test-results.xml
         
+    # 5. Upload test results
     - name: Upload test results
       uses: actions/upload-artifact@v4
       with:
         name: test-results
         path: test-results.xml
         
-    - name: Train and save model
-      run: |
-        python src/train.py
-        
-    - name: Upload model artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: trained-model
-        path: best_model.pth
-        
+    # 6. Create release
     - name: Create Release
       if: success()
       uses: actions/create-release@v1
@@ -67,6 +74,7 @@ jobs:
         draft: false
         prerelease: false
 
+    # 7. Upload trained model as release asset
     - name: Upload Release Asset
       if: success()
       uses: actions/upload-release-asset@v1
