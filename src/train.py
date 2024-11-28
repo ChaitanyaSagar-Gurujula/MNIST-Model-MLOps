@@ -168,17 +168,17 @@ def main():
     train_loader, test_loader = get_mnist_loaders(batch_size=128)
     
     # Optimizer and Scheduler setup for multiple epochs
-    num_epochs = 10
+    num_epochs = 1
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     
     # Scheduler for the entire training duration
     scheduler = optim.lr_scheduler.OneCycleLR(
         optimizer,
-        max_lr=0.015,
+        max_lr=0.01,
         epochs=num_epochs,
         steps_per_epoch=len(train_loader),
         div_factor=10,
-        final_div_factor=10, # final LR = initial_lr / final_div_factor
+        #final_div_factor=10, # final LR = initial_lr / final_div_factor
         pct_start=0.3,
         anneal_strategy='cos'
     )
@@ -187,10 +187,10 @@ def main():
     history = train(model, train_loader, test_loader, optimizer, scheduler, device, num_epochs=num_epochs)
     
     # Plot training history
-    plot_training_history(history)
+   # plot_training_history(history)
     
     # Plot detailed learning rate changes
-    plot_lr_changes(history, num_epochs)
+   # plot_lr_changes(history, num_epochs)
 
 def plot_training_history(history):
     """Plot training metrics including learning rate"""
