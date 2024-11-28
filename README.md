@@ -69,6 +69,8 @@ pip install -e .
 To train the model, run the following command:
 
 ```bash
+# From project root directory
+export PYTHONPATH=$PYTHONPATH:$(pwd)
 python src/train.py
 ```
 

@@ -63,8 +63,9 @@ jobs:
         name: test-results
         path: test-results.xml
         
-    # 6. Create release
+    # 6. First create the release and capture its outputs
     - name: Create Release
+      id: create_release
       if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: actions/create-release@v1
       env:
@@ -80,7 +81,7 @@ jobs:
         draft: false
         prerelease: false
 
-    # 7. Upload trained model as release asset
+    # Then use the upload_url from the previous step
     - name: Upload Release Asset
       if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: actions/upload-release-asset@v1
