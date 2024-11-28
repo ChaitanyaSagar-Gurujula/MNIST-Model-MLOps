@@ -39,8 +39,8 @@ jobs:
 
     # 2. Train model
     - name: Train and save model
-      env:
-        PYTHONPATH: ${{ github.workspace }}
+    #  env:
+    #    PYTHONPATH: ${{ github.workspace }}
       run: |
         python src/train.py
 

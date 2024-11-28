@@ -73,7 +73,10 @@ To train the model, run the following command:
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 python src/train.py
 ```
-
+or
+```bash
+python -m src.train
+```
 This will:
 - Download MNIST dataset (if not present)
 - Train the model for specified epochs
@@ -87,12 +90,6 @@ To run the test suite, use the following commands:
 ```bash
 # Run all tests
 pytest tests/ -v
-
-# Run only quick tests (skip performance tests)
-pytest tests/ -v -m "not slow"
-
-# Generate coverage report
-pytest --cov=src tests/
 ```
 
 ## GitHub Setup and CI/CD
