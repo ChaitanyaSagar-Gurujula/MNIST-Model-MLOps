@@ -42,7 +42,7 @@ jobs:
     #  env:
     #    PYTHONPATH: ${{ github.workspace }}
       run: |
-        python src/train.py
+        python -m src.train
 
     # 3. Upload trained model as artifact
     - name: Upload model artifact
