@@ -44,7 +44,7 @@ project_root/
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/mnist-model-mlops.git
+git clone https://github.com/ChaitanyaSagar-Gurujula/mnist-model-mlops.git
 cd mnist-model-mlops
 ```
 
